@@ -1,0 +1,390 @@
+@font-face {
+    font-family: 'Product Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Open Sans'), local('OpenSans'), url(https://fonts.gstatic.com/s/productsans/v5/HYvgU2fE2nRJvZ5JFAumwegdm0LZdjqr5-oayXSOefg.woff2) format('woff2');
+}
+
+* {
+    outline: none;
+    box-sizing: border-box;
+}
+
+.bar {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.bar:before,
+.bar:after {
+    content: '';
+    height: 2px;
+    width: 0;
+    bottom: 1px;
+    position: absolute;
+    background: #5264AE;
+    transition: 0.2s ease all;
+    -moz-transition: 0.2s ease all;
+    -webkit-transition: 0.2s ease all;
+}
+
+.bar:before {
+    left: 47.5%;
+}
+
+.bar:after {
+    right: 47.5%;
+}
+
+input:focus~.bar:before,
+input:focus~.bar:after {
+    width: 50%;
+}
+
+body {
+    background-color: #23272A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 5em;
+    overflow: hidden;
+    font-family: 'Product Sans';
+}
+
+input {
+    font-family: 'Product Sans';
+}
+
+.HintScreen {
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    height: 100%;
+    width: 100%;
+}
+
+#MainViewport {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#TabButtons {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    background-color: #356336;
+}
+
+#LoaderContainer {
+    position: fixed;
+    transition: all ease 1s;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+}
+
+#Loader {
+    display: flex;
+    flex-direction: column;
+    color: white;
+    font-family: 'Product Sans';
+    font-size: 1.5em;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+#BarLoader {
+    background: rgb(255, 255, 255);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 26%, rgba(255, 255, 255, 1) 76%, rgba(255, 255, 255, 0) 100%);
+    height: 3px;
+    width: 0px;
+    transition: width ease-out 10s;
+}
+
+#TabContent {
+    position: relative;
+    width: 100%;
+    overflow: auto;
+    flex: 1;
+    background-color: white;
+}
+
+.TabButton {
+    position: relative;
+    display: flex;
+    /* width: auto; */
+    align-items: center;
+    background-color: #4CAF50;
+    min-height: 1.8em;
+    color: white;
+    overflow: hidden;
+    flex: 1 0 auto;
+}
+
+.TabButton:hover {
+    background-color: #73be76;
+}
+
+.TabTitle {
+    height: 100%;
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    padding: 0 .6em;
+}
+
+.CloseButton {
+    padding: 0em .5em;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+.CloseButton:hover {
+    background-color: #a0e9a2;
+}
+
+#Packages {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.LayoutCenter {
+    height: 100%;
+    width: 75%;
+    padding-left: 1em;
+    position: relative;
+}
+
+.NonSelectable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.Viewport {
+    height: 100%;
+    width: 100%;
+    position: relative;
+}
+
+.CodeViewport {
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+}
+
+.Version {
+    background-color: white;
+    padding: .2em .4em;
+    transition: all ease .5s;
+    cursor: pointer;
+}
+
+.Version:hover {
+    background-color: lightgray;
+}
+
+#VersionButton {
+    padding: .5em 1em;
+    min-width: 10em;
+}
+
+.VersionSelector:hover {
+    opacity: 1;
+}
+
+.Package {
+    display: flex;
+    padding: .5em 0em .5em 1em;
+    transition: background-color ease 0.25s;
+    overflow: hidden;
+}
+
+#PackageViewer {
+    overflow: auto;
+}
+
+.EmptySearch {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.MaxSearch {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: .5em 2em;
+    background: rgb(167, 167, 167);
+    background: linear-gradient(0deg, rgba(167, 167, 167, 1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.Package .PackageName {
+    color: gray;
+    max-width: 0%;
+    overflow: hidden;
+    transition: all ease .2s;
+}
+
+.Package:hover {
+    overflow: none;
+    background-color: lightgray;
+}
+
+.Package:hover>.PackageName {
+    max-width: 100%;
+    transition: all ease .2s;
+    margin-right: .3em;
+}
+
+.ClassName {
+    flex: 0;
+}
+
+.Package:hover>.ClassName {
+    flex: 1;
+    overflow: hidden;
+}
+
+.LayoutLeft {
+    max-width: 25%;
+    width: 25%;
+    height: 100%;
+}
+
+.VersionSelector {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 99;
+    opacity: .5;
+    transition: all ease .3s;
+}
+
+#Container {
+    display: none;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity ease 1s;
+}
+
+.WindowOwner {
+    background: white;
+    border-radius: 0.5em;
+    overflow: hidden;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+#SearchInput {
+    font-size: 1em;
+    padding: .5em 1em;
+    display: block;
+    width: 100%;
+    border: none;
+    background: none;
+}
+
+
+/* width */
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+    border-radius: 100px;
+    z-index: 99999999999;
+    opacity: 0.5;
+}
+
+::-webkit-scrollbar:focus {
+    opacity: 1;
+}
+
+
+/* Track */
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 100px;
+    opacity: 0.5;
+}
+
+::-webkit-scrollbar-track:focus {
+    opacity: 1;
+}
+
+
+/* Handle */
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 100px;
+    opacity: 0.5;
+}
+
+
+/* Handle on hover */
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+    opacity: 1;
+}
+
+pre,
+pre code {
+    margin: 0;
+    overflow: none;
+}
+
+.CodePanel {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1em;
+}
+
+.DropDownButton {
+    background-color: #4CAF50;
+    color: white;
+    font-size: 1em;
+    border: none;
+    cursor: pointer;
+}
+
+.DropDown {
+    display: inline-block;
+}
+
+.DropDownContent {
+    display: none;
+    position: absolute;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    transition: all ease .5s;
+}
+
+.DropDownContent * {
+    color: black;
+    padding: .2em .4em;
+    text-decoration: none;
+    display: block;
+}
+
+.DropDownContent *:hover {
+    background-color: #f1f1f1
+}

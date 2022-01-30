@@ -1,0 +1,44 @@
+<html>
+
+<head>
+    <title>NMS Code Viewer</title>
+    <link href="index.css" rel="stylesheet" type="text/css">
+    <link href="github.css" rel="stylesheet" type="text/css">
+    <script src="index.js"></script>
+    <script src="rainbow.js"></script>
+    <script src="language/java.js"></script>
+    <script src="rainbow.linenumbers.js"></script>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+
+<body>
+    <div id="LoaderContainer" class="NonSelectable">
+        <div id="Loader">
+            <h1>NMS Code Viewer</h1>
+            <div id="BarLoader"></div>
+            <div id="StatusLoader" style="margin-top: 2em">Loading classes...</div>
+        </div>
+    </div>
+    <div id="Container">
+        <div class="LayoutLeft">
+            <div id="Packages" class="WindowOwner">
+                <input id="SearchInput" placeholder="Search" spellcheck="false"></input>
+                <div class="bar"></div>
+                <div id="PackageViewer">
+                </div>
+            </div>
+        </div>
+        <div class="LayoutCenter">
+            <div id="MainViewport" class="WindowOwner">
+                <div id="TabButtons"></div>
+                <div id="TabContent">
+                    <div id="WelcomeScreen" class="HintScreen">
+                        Search and select a class to start
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
