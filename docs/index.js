@@ -71,7 +71,6 @@ function hasVersion(versions, versionString) {
 function enableHighlightHelper(pack, doc, version) {
     let imports = {};
     let packageName = '';
-    console.log(doc);
     doc.querySelectorAll('.support.namespace').forEach(element => {
         if (!element.previousElementSibling) return;
         if (element.previousElementSibling.innerHTML === 'package') {
@@ -101,7 +100,7 @@ function enableHighlightHelper(pack, doc, version) {
                 name: html
             };
         }
-    })
+    });
     doc.querySelectorAll('.entity.class').forEach(element => {
         let previousSibling = element.previousSibling;
         let fullClassName;
@@ -119,16 +118,17 @@ function enableHighlightHelper(pack, doc, version) {
                 }
             }
         }
-        element.onmouseover = event => {
+        element.onmouseover = () => {
             element.style.backgroundColor = 'yellow';
         };
-        element.onclick = event => {
+        element.onclick = () => {
             let theClass = allClasses[fullClassName];
+            console.log(fullClassName);
             if (theClass) {
                 openTab(fullClassName).openVersion(version);
             }
         };
-        element.onmouseleave = event => {
+        element.onmouseleave = () => {
             element.style.backgroundColor = null;
         };
     });
@@ -263,7 +263,7 @@ function setStatus(status) {
 function openAtCurrentViewport(codeView, pack, version) {
     codeView.innerHTML = '<div class="HintScreen">Loading content...</div>';
     console.log('Opening at viewport: ' + pack.path + ' (' + version + ')');
-    let response = fetch('https://raw.githubusercontent.com/nms-code/' + version + '/master/' + pack.path);
+    let response = fetch('https://raw.githubusercontent.com/sunarya-thito/NMS-Viewer/master/sources/' + version + '/' + pack.path);
     response.then(data => {
         if (response.status === 404) throw new Error();
         data.text().then(dataText => {
@@ -397,52 +397,49 @@ function search(keyword) {
     }
 }
 
+function versionToInteger(version) {
+    let split = version.split("_");
+    let num = 0;
+    let digitIndex = split.length;
+    for (let i in split) {
+        split[i] = split[i].replace(/\D/g,'');
+        num += parseInt(split[i]) * Math.pow(10000, digitIndex);
+        digitIndex--;
+    }
+    return num;
+}
+
 async function fetchAll() {
     //getData(BASE + '/repos/nms-code/1_10_R1/git/trees/master?recursive=10').then(data=>console.log(data));
-    setStatus('Fetching database...');
-    let data = await getData(BASE + '/users/nms-code/repos');
-    setStatus('Fetching classpaths...');
-    data.sort((a, b) => {
-        // console.log('Sorting ' + a.name + ' with ' + b.name);
-        let numA = a.name.replace(/[^\d]*/g, '');
-        let numB = b.name.replace(/[^\d]*/g, '');
-        return numA - numB;
-    });
-    let completed = [];
     setStatus('Loading...');
-    for (let d in data) {
-        let name = data[d].name;
-        if (name === 'nms-code.github.io') continue;
-        console.log('Loading ' + name + ' repository...');
-        getData(BASE + '/repos/nms-code/' + name + '/git/trees/master?recursive=10').then(repository => {
-            let tree = repository.tree;
-            for (let t in tree) {
-                let path = tree[t].path;
-                if (path && path.endsWith('.java')) {
-                    let version = {
-                        index: d,
-                        toString: () => name,
-                    }
-                    addPackage(version, path);
+    console.log('Loading NMS-Viewer repository...');
+    getData(BASE + '/repos/sunarya-thito/NMS-Viewer/git/trees/master?recursive=40').then(repository => {
+        let tree = repository.tree;
+        for (let t in tree) {
+            let path = tree[t].path;
+            if (path && path.startsWith("sources/") && path.endsWith('.java')) {
+                path = path.substring(8);
+                let versionName = path.substring(0, path.indexOf('/'));
+                let version = {
+                    index: versionToInteger(versionName),
+                    toString: () => versionName
                 }
+                addPackage(version, path.substring(versionName.length + 1));
             }
-            console.log('Loaded ' + tree.length + ' classes in ' + name + '!');
-            completed.push(d);
-            if (completed.length === data.length - 1) { // -1 for the website repo
-                setStatus('Done');
-                console.log('Total ' + Object.keys(allClasses).length + ' classpaths loaded into your browser!');
-                document.getElementById('Container').style.display = 'flex';
-                search(searchInput.value.toLowerCase());
-                setTimeout(() => {
-                    document.getElementById('LoaderContainer').style.opacity = '0';
-                    document.getElementById('Container').style.opacity = '100';
-                    setTimeout(() => {
-                        document.body.removeChild(document.getElementById('LoaderContainer'));
-                    }, 1000);
-                }, 1500);
-            }
-        });
-    }
+        }
+        console.log('Loaded ' + tree.length + ' classes!');
+        setStatus('Done');
+        console.log('Total ' + Object.keys(allClasses).length + ' classpaths loaded into your browser!');
+        document.getElementById('Container').style.display = 'flex';
+        search(searchInput.value.toLowerCase());
+        setTimeout(() => {
+            document.getElementById('LoaderContainer').style.opacity = '0';
+            document.getElementById('Container').style.opacity = '100';
+            setTimeout(() => {
+                document.body.removeChild(document.getElementById('LoaderContainer'));
+            }, 1000);
+        }, 1500);
+    });
 }
 
 function updateContent(packs) {
@@ -491,16 +488,16 @@ function editDistance(s1, s2) {
     s1 = s1.toLowerCase();
     s2 = s2.toLowerCase();
 
-    var costs = new Array();
+    var costs = [];
     for (var i = 0; i <= s1.length; i++) {
         var lastValue = i;
         for (var j = 0; j <= s2.length; j++) {
-            if (i == 0)
+            if (i === 0)
                 costs[j] = j;
             else {
                 if (j > 0) {
                     var newValue = costs[j - 1];
-                    if (s1.charAt(i - 1) != s2.charAt(j - 1))
+                    if (s1.charAt(i - 1) !== s2.charAt(j - 1))
                         newValue = Math.min(Math.min(newValue, lastValue),
                             costs[j]) + 1;
                     costs[j - 1] = lastValue;
