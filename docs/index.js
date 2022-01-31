@@ -925,8 +925,11 @@ async function fetchAll() {
             if (line) {
                 let minLine;
                 if (typeof line === 'string') {
-                    minLine = line.split(/[^\d]/g)[0];
+                    let strings = line.split(/[^\d]/g);
+                    minLine = strings[0];
+                    line = (strings[0]-1) + '-' + (strings[1] - 1);
                 } else {
+                    line--;
                     minLine = line;
                 }
                 let target = Prism.plugins.lineNumbers.getLine(initialContent, minLine);
