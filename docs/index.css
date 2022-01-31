@@ -367,6 +367,10 @@ pre {
     padding-bottom: 0 !important;
 }
 
+code {
+    font-size: 0.75em !important;
+}
+
 .DropDownButton {
     background-color: #4CAF50;
     color: white;
