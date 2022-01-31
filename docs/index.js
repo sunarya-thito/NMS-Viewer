@@ -695,6 +695,9 @@ function openAtCurrentViewport(codeView, pack, version) {
 }
 
 function closeTab(tab) {
+    if (oldTab === tab) {
+        oldTab = null;
+    }
     let index = tabs.indexOf(tab);
     if (index < 0) return;
     tab.html.parentNode.removeChild(tab.html);
@@ -711,14 +714,19 @@ function closeTab(tab) {
     distinguishSameTabName();
 }
 
+let oldTab;
 function switchTab(tab) {
     if (tabs.indexOf(tab) < 0) return;
+    if (oldTab) {
+        oldTab.line = queries.line;
+    }
     queries.class = tab.pack.name;
     if (tab.version) {
         queries.version = tab.version.toString();
     } else {
         queries.version = null;
     }
+    queries.line = tab.line;
     updateQueries();
     for (let i in tabs) {
         let other = tabs[i];
@@ -730,6 +738,7 @@ function switchTab(tab) {
             other.html.style.display = 'none';
         }
     }
+    oldTab = tab;
 }
 
 function addPackage(version, path, visible) {
