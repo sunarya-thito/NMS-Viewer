@@ -17,12 +17,14 @@ let welcomeScreen;
 let selectedElement;
 
 let tabs = [];
+let queries;
 
 // window.Prism = window.Prism || {};
 // window.Prism.manual = true;
 
 // do it now
 window.onload = () => {
+    queries = parseQuery(window.location.search);
     // document.body.oncontextmenu = event =>  event.preventDefault();
     packageList = document.getElementById('PackageViewer');
     searchInput = document.getElementById('SearchInput');
@@ -49,15 +51,89 @@ window.onload = () => {
     //     }
     //     event.stopPropagation();
     // }
+    // Prism.languages.java['any'] = {
+    //     pattern: /.*/g
+    // };
+    document.addEventListener('selectionchange', () => {
+        let selection = window.getSelection();
+        let begin = selection.anchorNode;
+        let end = selection.focusNode;
+        if (begin && end) {
+            let panelBegin = findCodePanel(begin.parentElement);
+            let panelEnd = findCodePanel(end.parentElement);
+            if (panelBegin && panelBegin === panelEnd) {
+                let aLine = whatLineIs(panelBegin, begin);
+                let bLine = whatLineIs(panelEnd, end);
+                if (isFinite(aLine) && isFinite(bLine)) {
+                    if (aLine !== bLine) {
+                        queries.line = Math.min(aLine, bLine) + '-' + Math.max(aLine, bLine);
+                    } else {
+                        queries.line = aLine;
+                    }
+                    updateQueries();
+                }
+            }
+        }
+        // console.log(selection);
+    });
     fetchAll();
 };
+
+function findCodePanel(element) {
+    return element.closest('#CodePanel');
+}
+
+function updateQueries() {
+    let builder = '';
+    for (let i in queries) {
+        if (!queries[i]) continue;
+        if (builder.length > 0) {
+            builder += '&';
+        }
+        builder += i + '=' + queries[i];
+    }
+    if (history.pushState) {
+        let newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?' + builder;
+        window.history.pushState({path:newurl},'',newurl);
+    }
+}
+
+function getClientBound(any) {
+    if (any instanceof Element || any instanceof HTMLDocument) {
+        return any.getBoundingClientRect();
+    }
+    if (document.createRange) {
+        let range = document.createRange();
+        range.selectNodeContents(any);
+        return range.getBoundingClientRect();
+    }
+}
+
+function whatLineIs(content, element) {
+    let numbers = content.querySelector('.line-numbers-rows');
+    if (numbers) {
+        let compare = getClientBound(element);
+        let line = 1;
+        for (let i in numbers.children) {
+            let bodyRect = numbers.children[i].getBoundingClientRect();
+            if (compare.top === bodyRect.top) {
+                return line;
+            }
+            line++;
+        }
+        return line;
+    }
+    return 1;
+}
 
 function openSelectedElement() {
     if (selectedElement.type === ELEMENT_TYPE_CLASS) {
         let tab = openTab(selectedElement.className);
-        if (hasVersion(tab.pack.versions, lastVersion)) {
-            console.log('Loading last version');
-            tab.openVersion(selectedElement.version);
+        if (selectedElement.version) {
+            if (hasVersion(tab.pack.versions, selectedElement.version)) {
+                console.log('Loading last version');
+                tab.openVersion(selectedElement.version);
+            }
         }
     }
 }
@@ -67,7 +143,7 @@ function distinguishSameTabName() {
         let tab = tabs[i];
         let duplicates = findTabByName(tab.pack.simpleName);
         if (duplicates.length > 1) {
-            tab.tabTitle.innerHTML = tab.pack.packageName + '.' + tab.pack.simpleName;
+            tab.tabTitle.innerHTML = tab.pack.name;
         } else {
             tab.tabTitle.innerHTML = tab.pack.simpleName;
         }
@@ -88,10 +164,10 @@ function findTabByName(name) {
 function hasVersion(versions, versionString) {
     for (let i in versions) {
         if (versions[i].toString() === versionString.toString()) {
-            return true;
+            return versions[i];
         }
     }
-    return false;
+    return null;
 }
 
 function checkPreviousKeyword(element, expectedKeyword) {
@@ -104,6 +180,11 @@ function checkPreviousPunctuation(element, expected) {
 
 function checkPrevious(element, expectedKeyword, type) {
     let previousElementSibling = element.previousElementSibling;
+    // while (previousElementSibling) {
+    //     if (previousElementSibling.classList.contains('any')) {
+    //         previousElementSibling = previousElementSibling.previousElementSibling;
+    //     } else break;
+    // }
     return previousElementSibling && previousElementSibling.tagName === 'SPAN' && previousElementSibling.classList.contains(type) &&
         previousElementSibling.innerHTML === expectedKeyword;
 }
@@ -115,6 +196,12 @@ function findElements(elements, func) {
         }
     }
     return null;
+}
+
+function textNodesUnder(el){
+    let n, a=[], walk=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null,false);
+    while(n=walk.nextNode()) a.push(n);
+    return a;
 }
 
 function prettify(element, code) {
@@ -130,6 +217,18 @@ function prettify(element, code) {
         Prism.hooks.run('before-insert', env);
 
         env.element.innerHTML = env.highlightedCode;
+
+        // let nodes = textNodesUnder(env.element);
+        // for (let i in nodes) {
+        //     let node = nodes[i];
+        //     if (node.nodeType === node.TEXT_NODE) {
+        //         let replacement = document.createElement('span');
+        //         replacement.innerHTML = node.nodeValue;
+        //         replacement.classList.add('tNode');
+        //         node.parentNode.insertBefore(replacement, node);
+        //         node.parentNode.removeChild(node);
+        //     }
+        // }
 
         Prism.hooks.run('after-highlight', env);
         Prism.hooks.run('complete', env);
@@ -180,7 +279,7 @@ function findClass(imports, packageName, pack, element, trashed) {
     }
     if (trashed) trashed(className);
     let found = allClasses[className];
-    if (!found) found = allClasses[pack.packageName + '.' + pack.simpleName];
+    if (!found) found = allClasses[pack.name];
     return found;
 }
 
@@ -456,7 +555,11 @@ function openTab(className) {
     versionSelector.appendChild(dropDownButton);
     versionSelector.appendChild(dropDownContent);
     versionSelector.className = 'VersionSelector DropDown NonSelectable';
+    let tab = {};
     let openVersion = function(version) {
+        tab.version = version;
+        queries.version = version.toString();
+        updateQueries();
         let elements = content.getElementsByClassName('CodeViewport');
         for (let i = 0; i < elements.length; i++) {
             elements[i].style.display = 'none';
@@ -465,7 +568,9 @@ function openTab(className) {
         if (!codeContent) {
             let hint = content.getElementsByClassName('HintScreen');
             for (let i = 0; i < hint.length; i++) {
-                content.removeChild(hint[i]);
+                if (hint[i].parentElement === content) {
+                    content.removeChild(hint[i]);
+                }
             }
             codeCache[version] = codeContent = document.createElement('pre');
             codeContent.className = 'CodeViewport line-numbers language-java';
@@ -477,7 +582,7 @@ function openTab(className) {
             codeContent.style.display = 'block';
         }
         dropDownButton.innerHTML = version;
-        return codeContent
+        return codeContent;
     }
     for (let i in pack.versions) {
         let version = pack.versions[i];
@@ -499,7 +604,7 @@ function openTab(className) {
         dropDownButton.innerHTML = 'Select Version';
         let hint = document.createElement('div');
         hint.className = 'HintScreen';
-        hint.innerHTML = 'Select the version for '+pack.packageName + '.' + pack.simpleName;
+        hint.innerHTML = 'Select the version for '+pack.name;
         content.appendChild(hint);
     }
     let tabButton = document.createElement('div');
@@ -513,13 +618,19 @@ function openTab(className) {
     tabButton.appendChild(tabTitle);
     tabButton.appendChild(closeButton);
     tabPanel.appendChild(tabButton);
-    let tab = {
-        tabTitle: tabTitle,
-        pack: pack,
-        button: tabButton,
-        html: content,
-        openVersion: openVersion
-    };
+    tab.tabTitle = tabTitle;
+    tab.pack = pack;
+    tab.button = tabButton;
+    tab.html = content;
+    tab.openVersion = openVersion;
+    // let tab = {
+    //     tabTitle: tabTitle,
+    //     pack: pack,
+    //     button: tabButton,
+    //     html: content,
+    //     version: null,
+    //     openVersion: openVersion
+    // };
     if (welcomeScreen.parentNode) {
         welcomeScreen.parentNode.removeChild(welcomeScreen);
     }
@@ -559,6 +670,13 @@ function openAtCurrentViewport(codeView, pack, version) {
             codeView.innerHTML = '';
             // codeView.innerHTML = '<';
             let div = document.createElement('code');
+            div.contentEditable = 'true';
+            div.oncut = () => {return false};
+            div.onpaste = () => {return false};
+            div.spellcheck = false;
+            div.onkeydown = event => {
+                return event.metaKey;
+            };
             div.classList.add('language-java');
             codeView.appendChild(div)
             // Prism.highlight(dataText, Prism.languages.java, 'java')
@@ -595,6 +713,13 @@ function closeTab(tab) {
 
 function switchTab(tab) {
     if (tabs.indexOf(tab) < 0) return;
+    queries.class = tab.pack.name;
+    if (tab.version) {
+        queries.version = tab.version.toString();
+    } else {
+        queries.version = null;
+    }
+    updateQueries();
     for (let i in tabs) {
         let other = tabs[i];
         if (other === tab) {
@@ -648,9 +773,20 @@ function addPackage(version, path, visible) {
             packageName: packageName,
             path: path,
             html: divContent,
-            visible: visible
+            visible: visible,
+            name: className
         };
     }
+}
+
+function parseQuery(queryString) {
+    let query = {};
+    let pairs = (queryString[0] === '?' ? queryString.substr(1) : queryString).split('&');
+    for (let i = 0; i < pairs.length; i++) {
+        let pair = pairs[i].split('=');
+        query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+    }
+    return query;
 }
 
 function search(keyword) {
@@ -712,6 +848,28 @@ async function fetchAll() {
     //getData(BASE + '/repos/nms-code/1_10_R1/git/trees/master?recursive=10').then(data=>console.log(data));
     setStatus('Loading...');
     console.log('Loading NMS-Viewer repository...');
+    setStatus('Loading BungeeCord repository...')
+    let bungeeRepo = await getData(BASE + '/repos/SpigotMC/BungeeCord/git/trees/master?recursive=20');
+    let bungeeTree = bungeeRepo.tree;
+    for (let t in bungeeTree) {
+        let path = bungeeTree[t].path;
+        if (path.endsWith('.java')) {
+            let index = path.indexOf('/src/main/java/');
+            if (index >= 0) {
+                let ver = path.substring(0, index);
+                path = path.substring(index + 15);
+                if (ver.length > 0) {
+                    let version = {
+                        index: 0,
+                        toString: () => ver,
+                        path: 'SpigotMC/BungeeCord/master/' + ver + '/src/main/java'
+                    }
+                    addPackage(version, path, true);
+                }
+            }
+        }
+    }
+    setStatus('Loading JDK-8 repository...')
     let jdkRepo = await getData(BASE + '/repos/ZenOfAutumn/jdk8/git/trees/master?recursive=20');
     let jdkTree = jdkRepo.tree;
     for (let t in jdkTree) {
@@ -719,12 +877,13 @@ async function fetchAll() {
         if (path.endsWith('.java')) {
             let version = {
                 index: 0,
-                toString: () => '8',
+                toString: () => 'JDK-8',
                 path: 'ZenOfAutumn/jdk8/master'
             };
             addPackage(version, path, false);
         }
     }
+    setStatus('Loading Spigot repository...')
     let repository = await getData(BASE + '/repos/sunarya-thito/NMS-Viewer/git/trees/master?recursive=20');
     let tree = repository.tree;
     for (let t in tree) {
@@ -745,7 +904,38 @@ async function fetchAll() {
     console.log('Total ' + Object.keys(allClasses).length + ' classpaths loaded into your browser!');
     document.getElementById('Container').style.display = 'flex';
     search(searchInput.value.toLowerCase());
+    let initialClass = queries.class;
+    let initialContent;
+    if (initialClass) {
+        let foundClass = allClasses[initialClass];
+        if (foundClass) {
+            let initialVersion = queries.version;
+            let tab = openTab(foundClass.packageName + '.' + foundClass.simpleName);
+            if (initialVersion) {
+                let version = hasVersion(foundClass.versions, initialVersion);
+                if (version) {
+                    initialContent = tab.openVersion(version);
+                }
+            }
+        }
+    }
     setTimeout(() => {
+        if (initialContent) {
+            let line = queries.line;
+            if (line) {
+                let minLine;
+                if (typeof line === 'string') {
+                    minLine = line.split(/[^\d]/g)[0];
+                } else {
+                    minLine = line;
+                }
+                let target = Prism.plugins.lineNumbers.getLine(initialContent, minLine);
+                if (target) {
+                    Prism.plugins.lineHighlight.highlightLines(initialContent, line.toString(), '')();
+                    target.scrollIntoView(true);
+                }
+            }
+        }
         document.getElementById('LoaderContainer').style.opacity = '0';
         document.getElementById('Container').style.opacity = '100';
         setTimeout(() => {
@@ -784,13 +974,13 @@ async function getData(url = '') {
 }
 
 function similarity(s1, s2) {
-    var longer = s1;
-    var shorter = s2;
+    let longer = s1;
+    let shorter = s2;
     if (s1.length < s2.length) {
         longer = s2;
         shorter = s1;
     }
-    var longerLength = longer.length;
+    let longerLength = longer.length;
     if (longerLength === 0) {
         return 1.0;
     }
@@ -801,10 +991,10 @@ function editDistance(s1, s2) {
     s1 = s1.toLowerCase();
     s2 = s2.toLowerCase();
 
-    var costs = [];
-    for (var i = 0; i <= s1.length; i++) {
-        var lastValue = i;
-        for (var j = 0; j <= s2.length; j++) {
+    let costs = [];
+    for (let i = 0; i <= s1.length; i++) {
+        let lastValue = i;
+        for (let j = 0; j <= s2.length; j++) {
             if (i === 0)
                 costs[j] = j;
             else {
