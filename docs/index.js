@@ -726,7 +726,9 @@ function switchTab(tab) {
     } else {
         queries.version = null;
     }
-    queries.line = tab.line;
+    if (!queries.line || tab.line) {
+        queries.line = tab.line;
+    }
     updateQueries();
     for (let i in tabs) {
         let other = tabs[i];
