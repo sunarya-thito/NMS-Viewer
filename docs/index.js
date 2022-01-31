@@ -117,6 +117,47 @@ function findElements(elements, func) {
     return null;
 }
 
+function prettify(element, code) {
+    let env = {
+        element: element,
+        language: 'java',
+        grammar: Prism.languages.java,
+        code: code
+    }
+    function insertHighlightedCode(highlightedCode) {
+        env.highlightedCode = highlightedCode;
+
+        Prism.hooks.run('before-insert', env);
+
+        env.element.innerHTML = env.highlightedCode;
+
+        Prism.hooks.run('after-highlight', env);
+        Prism.hooks.run('complete', env);
+    }
+    Prism.hooks.run('before-sanity-check', env);
+
+    // plugins may change/add the parent/element
+    parent = env.element.parentElement;
+    if (parent && parent.nodeName.toLowerCase() === 'pre' && !parent.hasAttribute('tabindex')) {
+        parent.setAttribute('tabindex', '0');
+    }
+
+    if (!env.code) {
+        Prism.hooks.run('complete', env);
+        return;
+    }
+
+    Prism.hooks.run('before-highlight', env);
+
+    if (!env.grammar) {
+        insertHighlightedCode(Prism.util.encode(env.code));
+        return;
+    }
+
+    let highlightedCode = Prism.highlight(env.code, env.grammar, env.language);
+    insertHighlightedCode(highlightedCode);
+}
+
 function findClass(imports, packageName, pack, element, trashed) {
     let className;
     if (element.previousElementSibling && element.previousElementSibling.classList.contains('namespace')) {
@@ -519,10 +560,9 @@ function openAtCurrentViewport(codeView, pack, version) {
             // codeView.innerHTML = '<';
             let div = document.createElement('code');
             div.classList.add('language-java');
-            div.innerHTML = dataText;
             codeView.appendChild(div)
             // Prism.highlight(dataText, Prism.languages.java, 'java')
-            Prism.highlightElement(div);
+            prettify(div, dataText);
             enableHighlightHelper(pack, codeView, version);
             // codeView.innerHTML = '<code data-language="java">' + dataText + '</code>';
             // codeView.innerHTML = hljs.highlight(dataText, {language: 'java'}).value;
