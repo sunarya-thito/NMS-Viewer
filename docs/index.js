@@ -677,7 +677,7 @@ function openAtCurrentViewport(codeView, pack, version) {
             div.onkeydown = event => {
                 return event.metaKey;
             };
-            div.classList.add('language-java');
+            div.classList.add('language-java', 'match-braces');
             codeView.appendChild(div)
             // Prism.highlight(dataText, Prism.languages.java, 'java')
             prettify(div, dataText);
