@@ -43,7 +43,7 @@ input:focus~.bar:after {
 }
 
 body {
-    background-color: #23272A;
+    background-color: #181b1c;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -51,11 +51,12 @@ body {
     width: 100%;
     padding: 5em;
     overflow: hidden;
-    font-family: 'Product Sans';
+    font-family: 'Product Sans', serif;
 }
 
 input {
-    font-family: 'Product Sans';
+    font-family: 'Product Sans', serif;
+    color: white;
 }
 
 .HintScreen {
@@ -71,6 +72,8 @@ input {
     width: 100%;
     display: flex;
     flex-direction: column;
+    background-color: rgb(45, 45, 45);
+    color: rgb(204, 204, 204);
 }
 
 #TabButtons {
@@ -93,7 +96,7 @@ input {
     display: flex;
     flex-direction: column;
     color: white;
-    font-family: 'Product Sans';
+    font-family: 'Product Sans', serif;
     font-size: 1.5em;
     align-items: center;
     justify-content: center;
@@ -112,9 +115,8 @@ input {
 #TabContent {
     position: relative;
     width: 100%;
-    overflow: auto;
+    overflow: hidden;
     flex: 1;
-    background-color: white;
 }
 
 .TabButton {
@@ -142,7 +144,7 @@ input {
 }
 
 .CloseButton {
-    padding: 0em .5em;
+    padding: 0 .5em;
     display: flex;
     align-items: center;
     height: 100%;
@@ -152,11 +154,17 @@ input {
     background-color: #a0e9a2;
 }
 
+pre {
+    margin: 0 !important;
+}
+
 #Packages {
     height: 100%;
     width: 100%;
     display: flex;
     flex-direction: column;
+    background-color: rgb(45, 45, 45);
+    color: rgb(204, 204, 204);
 }
 
 .LayoutCenter {
@@ -165,6 +173,7 @@ input {
     padding-left: 1em;
     position: relative;
 }
+
 
 .NonSelectable {
     -webkit-touch-callout: none;
@@ -179,23 +188,19 @@ input {
     height: 100%;
     width: 100%;
     position: relative;
-}
-
-.CodeViewport {
-    height: 100%;
-    width: 100%;
-    overflow: auto;
+    overflow: hidden;
 }
 
 .Version {
-    background-color: white;
+    background-color: rgb(70, 70, 70);
     padding: .2em .4em;
     transition: all ease .5s;
     cursor: pointer;
+    color: rgb(204, 204, 204);
 }
 
 .Version:hover {
-    background-color: lightgray;
+    background-color: rgb(90, 90, 90);
 }
 
 #VersionButton {
@@ -231,8 +236,8 @@ input {
     justify-content: center;
     align-items: center;
     padding: .5em 2em;
-    background: rgb(167, 167, 167);
-    background: linear-gradient(0deg, rgba(167, 167, 167, 1) 0%, rgba(255, 255, 255, 0) 100%);
+    background: rgb(20, 20, 20);
+    background: linear-gradient(0deg, rgba(70, 70, 70, 1) 0%, rgba(20, 20, 20, 0) 100%);
 }
 
 .Package .PackageName {
@@ -244,7 +249,7 @@ input {
 
 .Package:hover {
     overflow: none;
-    background-color: lightgray;
+    background-color: rgb(70, 70, 70);
 }
 
 .Package:hover>.PackageName {
@@ -309,18 +314,22 @@ input {
     height: 10px;
     border-radius: 100px;
     z-index: 99999999999;
-    opacity: 0.5;
+    opacity: 0;
 }
 
 ::-webkit-scrollbar:focus {
     opacity: 1;
 }
 
+::-webkit-scrollbar-corner {
+    opacity: 0;
+}
+
 
 /* Track */
 
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: transparent;
     border-radius: 100px;
     opacity: 0.5;
 }
@@ -346,15 +355,16 @@ input {
     opacity: 1;
 }
 
-pre,
-pre code {
-    margin: 0;
-    overflow: none;
-}
-
 .CodePanel {
     font-family: 'Courier New', Courier, monospace;
     font-size: 1em;
+}
+
+.CodeViewport {
+    width: 100%;
+    height: 100%;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 .DropDownButton {
@@ -379,12 +389,11 @@ pre code {
 }
 
 .DropDownContent * {
-    color: black;
     padding: .2em .4em;
     text-decoration: none;
     display: block;
 }
 
-.DropDownContent *:hover {
-    background-color: #f1f1f1
-}
+/*.DropDownContent *:hover {*/
+/*    background-color: #f1f1f1*/
+/*}*/

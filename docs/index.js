@@ -1,5 +1,8 @@
 const BASE = 'https://api.github.com';
 const MAX_SEARCH = 100;
+const ELEMENT_TYPE_CLASS = 'CLASS';
+const ELEMENT_TYPE_METHOD = 'METHOD';
+const ACCESS_MODIFIERS = ['public', 'private', 'abstract', 'final', 'strictfp', 'static', 'default', 'protected', 'transient', 'synchronized', 'volatile'];
 let allClasses = {};
 let packageList;
 let searchInput;
@@ -11,11 +14,16 @@ let maxSearch;
 let lastVersion;
 let statusLoader;
 let welcomeScreen;
+let selectedElement;
 
 let tabs = [];
 
+// window.Prism = window.Prism || {};
+// window.Prism.manual = true;
+
 // do it now
 window.onload = () => {
+    // document.body.oncontextmenu = event =>  event.preventDefault();
     packageList = document.getElementById('PackageViewer');
     searchInput = document.getElementById('SearchInput');
     tabPanel = document.getElementById('TabButtons');
@@ -32,9 +40,27 @@ window.onload = () => {
     searchInput.addEventListener('input', () => {
         search(searchInput.value.toLowerCase());
     });
-    Rainbow.onHighlight(block => console.log(block));
+    // document.onkeydown = event => {
+    //     if (event.code === 'F3') {
+    //         if (selectedElement) {
+    //             openSelectedElement();
+    //         }
+    //         return;
+    //     }
+    //     event.stopPropagation();
+    // }
     fetchAll();
 };
+
+function openSelectedElement() {
+    if (selectedElement.type === ELEMENT_TYPE_CLASS) {
+        let tab = openTab(selectedElement.className);
+        if (hasVersion(tab.pack.versions, lastVersion)) {
+            console.log('Loading last version');
+            tab.openVersion(selectedElement.version);
+        }
+    }
+}
 
 function distinguishSameTabName() {
     for (let i in tabs) {
@@ -68,70 +94,286 @@ function hasVersion(versions, versionString) {
     return false;
 }
 
-function enableHighlightHelper(pack, doc, version) {
-    let imports = {};
-    let packageName = '';
-    doc.querySelectorAll('.support.namespace').forEach(element => {
-        if (!element.previousElementSibling) return;
-        if (element.previousElementSibling.innerHTML === 'package') {
-            packageName = element.innerHTML;
-            if (packageName.endsWith(';')) {
-                packageName = packageName.substring(0, packageName.length - 1);
-            }
-            return;
+function checkPreviousKeyword(element, expectedKeyword) {
+    return checkPrevious(element, expectedKeyword, 'keyword');
+}
+
+function checkPreviousPunctuation(element, expected) {
+    return checkPrevious(element, expected, 'punctuation');
+}
+
+function checkPrevious(element, expectedKeyword, type) {
+    let previousElementSibling = element.previousElementSibling;
+    return previousElementSibling && previousElementSibling.tagName === 'SPAN' && previousElementSibling.classList.contains(type) &&
+        previousElementSibling.innerHTML === expectedKeyword;
+}
+
+function findElements(elements, func) {
+    for (let i in elements) {
+        if (func(elements[i])) {
+            return elements[i];
         }
-        if (element.previousElementSibling.innerHTML !== 'import') return;
-        let html = element.innerHTML;
-        if (html && html.endsWith(';')) {
-            html = html.substring(0, html.length - 1);
-            let packageName;
-            let simpleName;
-            let index = html.lastIndexOf('.');
-            if (index >= 0) {
-                packageName = html.substring(0, index);
-                simpleName = html.substring(index + 1);
-            } else {
-                simpleName = html;
-                packageName = '';
-            }
-            imports[simpleName] = {
-                simpleName: simpleName,
-                packageName: packageName,
-                name: html
-            };
-        }
-    });
-    doc.querySelectorAll('.entity.class').forEach(element => {
-        let previousSibling = element.previousSibling;
-        let fullClassName;
-        if (previousSibling.nodeName === '#text' && previousSibling.nodeValue && previousSibling.nodeValue.endsWith('.')) {
-            fullClassName = previousSibling.nodeValue + '.' + element.innerHTML;
+    }
+    return null;
+}
+
+function findClass(imports, packageName, pack, element, trashed) {
+    let className;
+    if (element.previousElementSibling && element.previousElementSibling.classList.contains('namespace')) {
+        className = element.previousElementSibling.innerText + element.innerText;
+    } else {
+        let imported = imports[element.innerText];
+        if (imported) {
+            className = imported;
         } else {
-            let imported = imports[element.innerHTML];
-            if (imported) {
-                fullClassName = imported.name;
+            if (allClasses[packageName + '.' + element.innerText]) {
+                className = packageName + '.' + element.innerText;
+            } else if (allClasses['java.lang.'+element.innerText]) {
+                className = 'java.lang.' + element.innerText;
+            } else if (allClasses[element.innerText]) {
+                className = element.innerText;
             } else {
-                fullClassName = packageName + '.' + element.innerHTML;
-                let found = allClasses[fullClassName];
-                if (!found || !hasVersion(found.versions, version)) {
-                    fullClassName = pack.packageName + '.' +pack.simpleName;
+                className = packageName + '.' + pack.simpleName;
+            }
+        }
+    }
+    if (trashed) trashed(className);
+    let found = allClasses[className];
+    if (!found) found = allClasses[pack.packageName + '.' + pack.simpleName];
+    return found;
+}
+
+function parseParameters(punctuationSibling, imports, packageName, pack) {
+    let e = punctuationSibling.nextElementSibling;
+    let parameters = [];
+    while (e) {
+        if (e.classList.contains('punctuation')) {
+            if (e.innerText === ')') break;
+            if (e.innerText === ',') continue;
+        }
+        let className;
+        if (e.classList.contains('class-name')) {
+            let cn = findClass(imports, packageName, pack, e);
+            if (cn) {
+                className = cn.packageName + '.' + cn.simpleName;
+            } else {
+                className = e.innerText;
+            }
+        } else if (e.classList.contains('keyword')) {
+            // int, short, double, long
+            className = e.innerText;
+        }
+        let nextSibling = e.nextSibling;
+        if (nextSibling) {
+            let nodeValue = nextSibling.nodeValue;
+            if (nodeValue && nodeValue.trim) {
+                nodeValue = nodeValue.trim();
+                parameters.push({
+                    typeName: className,
+                    name: nodeValue
+                });
+            }
+        }
+        e = e.nextElementSibling;
+    }
+    return parameters;
+}
+
+function enableHighlightHelper(pack, doc, version) {
+    let packageName = findElements(doc.querySelectorAll('.token.namespace'), e => checkPreviousKeyword(e, "package")).innerText;
+    let imports = {};
+    // from imports
+    doc.querySelectorAll('.token.namespace').forEach(element => {
+        if (checkPreviousKeyword(element, "import")) {
+            let nextSibling = element.nextElementSibling;
+            if (nextSibling && nextSibling.tagName === 'SPAN') {
+                if (nextSibling.classList.contains('class-name')) {
+                    imports[nextSibling.innerText] = element.innerText + nextSibling.innerText;
+                } else if (nextSibling.classList.contains('operator') && nextSibling.innerText === '*') {
+                    for (let i in allClasses) {
+                        let allClass = allClasses[i];
+                        if (!hasVersion(allClass.versions, version)) continue;
+                        let cn = allClass.packageName + '.' + allClass.simpleName;
+                        if (cn.startsWith(element.innerText)) {
+                            imports[allClass.simpleName] = cn;
+                        }
+                    }
                 }
             }
         }
-        element.onmouseover = () => {
-            element.style.backgroundColor = 'yellow';
-        };
-        element.onclick = () => {
-            let theClass = allClasses[fullClassName];
-            console.log(fullClassName);
-            if (theClass) {
-                openTab(fullClassName).openVersion(version);
-            }
-        };
-        element.onmouseleave = () => {
-            element.style.backgroundColor = null;
-        };
     });
+    // import inner classes
+    doc.querySelectorAll('.token.class-name').forEach(element => {
+        if (checkPreviousKeyword(element, 'class') || checkPreviousKeyword(element, 'interface') || checkPreviousKeyword(element, 'enum')) {
+            imports[element.innerText] = packageName + '.' + pack.simpleName;
+        }
+    });
+    // let declaredMethods = [];
+    // doc.querySelectorAll('.token.function').forEach(element => {
+    //     let isConstructor;
+    //     let isDeclared;
+    //     let className;
+    //     let methodName = element.innerText;
+    //     let find = element;
+    //     let hasFoundPunctuation;
+    //     let parameters = parseParameters(element.nextElementSibling, imports, packageName, pack);
+    //     while (find) {
+    //         if ((!find.classList.contains('punctuation') || find.innerText !== '.') && !find.classList.contains('class-name')&& !find.classList.contains('keyword')) {
+    //             break;
+    //         }
+    //         if (find.classList.contains('punctuation')) {
+    //             hasFoundPunctuation = true;
+    //         }
+    //         if (find.classList.contains('class-list') && !hasFoundPunctuation) {
+    //             // String trim() but not String.trim()
+    //             isDeclared = true;
+    //             break;
+    //         }
+    //         if (find.classList.contains('keyword')) {
+    //             if (find.innerText === 'new') {
+    //                 isConstructor = true;
+    //                 break;
+    //             }
+    //             if ((ACCESS_MODIFIERS.includes(find.innerText) || find.innerText === 'void') && !hasFoundPunctuation) {
+    //                 isDeclared = true;
+    //                 break;
+    //             }
+    //         }
+    //         find = find.previousElementSibling;
+    //     }
+    //     console.log('Found method '+methodName+' but '+isDeclared);
+    //     console.log(parameters);
+    //     if (isDeclared) {
+    //         declaredMethods.push(
+    //             {
+    //                 methodName: methodName,
+    //                 isConstructor: false,
+    //                 parameters
+    //             }
+    //         );
+    //         return;
+    //     }
+    //     if (checkPreviousPunctuation(element, '.')) {
+    //         // this.add(test)
+    //         // Test.add(test)
+    //         // Test.this.add(test)
+    //         if (checkPreviousKeyword(element.previousElementSibling, 'this')) {
+    //             // this.add(test)
+    //             // Test.this.add(test)
+    //             if (checkPreviousPunctuation(element.previousElementSibling.previousElementSibling, '.') && element.previousElementSibling.previousElementSibling.previousElementSibling.classList.contains('class-name')) {
+    //                 // Test.this.add(test)
+    //                 let cn = findClass(imports, packageName, pack, element.previousElementSibling.previousElementSibling.previousElementSibling);
+    //                 className = cn ? cn.packageName + '.' + cn.simpleName : pack.packageName + '.' + pack.simpleName;
+    //             } else {
+    //                 // this.add(test)
+    //                 className = pack.packageName + '.' + pack.simpleName;
+    //             }
+    //         } else {
+    //             // Test.add(test)
+    //             let cn = findClass(imports, packageName, pack, element.previousElementSibling.previousElementSibling);
+    //             className = cn ? cn.packageName + '.' + cn.simpleName : pack.packageName + '.' + pack.simpleName;
+    //         }
+    //     } else {
+    //         // add(test)
+    //         className = pack.packageName + '.' +pack.simpleName;
+    //     }
+    // });
+    // console.log(declaredMethods);
+    // highlight all classes
+    doc.querySelectorAll('.token.class-name').forEach(element => {
+        if (element.innerText === pack.simpleName && element.nextElementSibling && element.nextElementSibling.classList.contains('punctuation') && element.nextElementSibling.innerText === '(') {
+            // CONSTRUCTOR
+        }
+        let realClassName;
+        let found = findClass(imports, packageName, pack, element, cn => realClassName = cn);
+        if (found) {
+            element.ondblclick = () => {
+                openSelectedElement();
+            };
+            element.onclick = () => {
+                selectedElement = {
+                    type: ELEMENT_TYPE_CLASS,
+                    className: found.packageName + '.' + found.simpleName,
+                    methodName: null,
+                    version: version
+                }
+            };
+            tippy(element, {
+                content: realClassName,
+                theme: 'light'
+            });
+            element.onmouseover = () => {
+                element.style.background = 'rgba(220, 220, 220, 0.5)';
+                element.style.borderRadius = '5px';
+            };
+            element.onmouseleave = () => {
+                element.style.backgroundColor = 'initial'
+            };
+        }
+    });
+    // let imports = {};
+    // let packageName = '';
+    // doc.querySelectorAll('.support.namespace').forEach(element => {
+    //     if (!element.previousElementSibling) return;
+    //     if (element.previousElementSibling.innerHTML === 'package') {
+    //         packageName = element.innerHTML;
+    //         if (packageName.endsWith(';')) {
+    //             packageName = packageName.substring(0, packageName.length - 1);
+    //         }
+    //         return;
+    //     }
+    //     if (element.previousElementSibling.innerHTML !== 'import') return;
+    //     let html = element.innerHTML;
+    //     if (html && html.endsWith(';')) {
+    //         html = html.substring(0, html.length - 1);
+    //         let packageName;
+    //         let simpleName;
+    //         let index = html.lastIndexOf('.');
+    //         if (index >= 0) {
+    //             packageName = html.substring(0, index);
+    //             simpleName = html.substring(index + 1);
+    //         } else {
+    //             simpleName = html;
+    //             packageName = '';
+    //         }
+    //         imports[simpleName] = {
+    //             simpleName: simpleName,
+    //             packageName: packageName,
+    //             name: html
+    //         };
+    //     }
+    // });
+    // doc.querySelectorAll('.entity.class').forEach(element => {
+    //     let previousSibling = element.previousSibling;
+    //     let fullClassName;
+    //     if (previousSibling.nodeName === '#text' && previousSibling.nodeValue && previousSibling.nodeValue.endsWith('.')) {
+    //         fullClassName = previousSibling.nodeValue + '.' + element.innerHTML;
+    //     } else {
+    //         let imported = imports[element.innerHTML];
+    //         if (imported) {
+    //             fullClassName = imported.name;
+    //         } else {
+    //             fullClassName = packageName + '.' + element.innerHTML;
+    //             let found = allClasses[fullClassName];
+    //             if (!found || !hasVersion(found.versions, version)) {
+    //                 fullClassName = pack.packageName + '.' +pack.simpleName;
+    //             }
+    //         }
+    //     }
+    //     element.onmouseover = () => {
+    //         element.style.backgroundColor = 'yellow';
+    //     };
+    //     element.onclick = () => {
+    //         let theClass = allClasses[fullClassName];
+    //         console.log(fullClassName);
+    //         if (theClass) {
+    //             openTab(fullClassName).openVersion(version);
+    //         }
+    //     };
+    //     element.onmouseleave = () => {
+    //         element.style.backgroundColor = null;
+    //     };
+    // });
 }
 
 function openTab(className) {
@@ -185,10 +427,11 @@ function openTab(className) {
                 content.removeChild(hint[i]);
             }
             codeCache[version] = codeContent = document.createElement('pre');
-            codeContent.className = 'CodeViewport line-numbers match-braces';
+            codeContent.className = 'CodeViewport line-numbers language-java';
             codeContent.id = 'CodePanel';
             content.appendChild(codeContent);
-            openAtCurrentViewport(codeContent, pack, lastVersion);
+            openAtCurrentViewport(codeContent, pack, version);
+
         } else {
             codeContent.style.display = 'block';
         }
@@ -252,6 +495,10 @@ function openTab(className) {
     closeButton.onclick = () => {
         closeTab(tab);
     };
+    if (pack.versions.length === 1) {
+        console.log('Opening single version: '+pack.versions[0]);
+        openVersion(pack.versions[0]);
+    }
     distinguishSameTabName();
     return tab;
 }
@@ -263,17 +510,26 @@ function setStatus(status) {
 function openAtCurrentViewport(codeView, pack, version) {
     codeView.innerHTML = '<div class="HintScreen">Loading content...</div>';
     console.log('Opening at viewport: ' + pack.path + ' (' + version + ')');
-    let response = fetch('https://raw.githubusercontent.com/sunarya-thito/NMS-Viewer/master/sources/' + version + '/' + pack.path);
+    let response = fetch('https://raw.githubusercontent.com/'+ version.path + '/' + pack.path);
     response.then(data => {
         if (response.status === 404) throw new Error();
         data.text().then(dataText => {
             codeView.innerHTML = '<div class="HintScreen">Painting...</div>';
-            // codeView.innerHTML = Prism.highlight(dataText, Prism.languages.java, 'java');
+            codeView.innerHTML = '';
+            // codeView.innerHTML = '<';
+            let div = document.createElement('code');
+            div.classList.add('language-java');
+            div.innerHTML = dataText;
+            codeView.appendChild(div)
+            // Prism.highlight(dataText, Prism.languages.java, 'java')
+            Prism.highlightElement(div);
+            enableHighlightHelper(pack, codeView, version);
             // codeView.innerHTML = '<code data-language="java">' + dataText + '</code>';
-            Rainbow.color(dataText, 'java', newDataText => {
-                codeView.innerHTML = newDataText;
-                enableHighlightHelper(pack, codeView, version);
-            });
+            // codeView.innerHTML = hljs.highlight(dataText, {language: 'java'}).value;
+            // Rainbow.color(dataText, 'java', newDataText => {
+            //     codeView.innerHTML = newDataText;
+            //     enableHighlightHelper(pack, codeView, version);
+            // });
         });
     }).catch(error => {
         codeView.innerHTML = '<div class="HintScreen">Failed to load the content<br>' + error + '</div>';
@@ -311,7 +567,7 @@ function switchTab(tab) {
     }
 }
 
-function addPackage(version, path) {
+function addPackage(version, path, visible) {
     let className = path.substring(0, path.length - 5).replace(/\//g, '.');
     // let data = {
     // version: version,
@@ -351,7 +607,8 @@ function addPackage(version, path) {
             simpleName: simpleName,
             packageName: packageName,
             path: path,
-            html: divContent
+            html: divContent,
+            visible: visible
         };
     }
 }
@@ -362,6 +619,7 @@ function search(keyword) {
         let count = 0;
         for (let i in allClasses) {
             let cl = allClasses[i];
+            if (!cl.visible) continue;
             packs.push(cl);
             count++;
             if (count >= MAX_SEARCH) break;
@@ -374,6 +632,7 @@ function search(keyword) {
     }
     for (let i in allClasses) {
         let cl = allClasses[i];
+        if (!cl.visible) continue;
         if (i.toLowerCase().includes(keyword)) {
             packs.push(cl);
             // count++;
@@ -413,33 +672,46 @@ async function fetchAll() {
     //getData(BASE + '/repos/nms-code/1_10_R1/git/trees/master?recursive=10').then(data=>console.log(data));
     setStatus('Loading...');
     console.log('Loading NMS-Viewer repository...');
-    getData(BASE + '/repos/sunarya-thito/NMS-Viewer/git/trees/master?recursive=40').then(repository => {
-        let tree = repository.tree;
-        for (let t in tree) {
-            let path = tree[t].path;
-            if (path && path.startsWith("sources/") && path.endsWith('.java')) {
-                path = path.substring(8);
-                let versionName = path.substring(0, path.indexOf('/'));
-                let version = {
-                    index: versionToInteger(versionName),
-                    toString: () => versionName
-                }
-                addPackage(version, path.substring(versionName.length + 1));
-            }
+    let jdkRepo = await getData(BASE + '/repos/ZenOfAutumn/jdk8/git/trees/master?recursive=20');
+    let jdkTree = jdkRepo.tree;
+    for (let t in jdkTree) {
+        let path = jdkTree[t].path;
+        if (path.endsWith('.java')) {
+            let version = {
+                index: 0,
+                toString: () => '8',
+                path: 'ZenOfAutumn/jdk8/master'
+            };
+            addPackage(version, path, false);
         }
-        console.log('Loaded ' + tree.length + ' classes!');
-        setStatus('Done');
-        console.log('Total ' + Object.keys(allClasses).length + ' classpaths loaded into your browser!');
-        document.getElementById('Container').style.display = 'flex';
-        search(searchInput.value.toLowerCase());
+    }
+    let repository = await getData(BASE + '/repos/sunarya-thito/NMS-Viewer/git/trees/master?recursive=20');
+    let tree = repository.tree;
+    for (let t in tree) {
+        let path = tree[t].path;
+        if (path && path.startsWith("sources/") && path.endsWith('.java')) {
+            path = path.substring(8);
+            let versionName = path.substring(0, path.indexOf('/'));
+            let version = {
+                index: versionToInteger(versionName),
+                toString: () => versionName,
+                path: 'sunarya-thito/NMS-Viewer/master/sources/'+versionName
+            }
+            addPackage(version, path.substring(versionName.length + 1), true);
+        }
+    }
+    console.log('Loaded ' + tree.length + ' classes!');
+    setStatus('Done');
+    console.log('Total ' + Object.keys(allClasses).length + ' classpaths loaded into your browser!');
+    document.getElementById('Container').style.display = 'flex';
+    search(searchInput.value.toLowerCase());
+    setTimeout(() => {
+        document.getElementById('LoaderContainer').style.opacity = '0';
+        document.getElementById('Container').style.opacity = '100';
         setTimeout(() => {
-            document.getElementById('LoaderContainer').style.opacity = '0';
-            document.getElementById('Container').style.opacity = '100';
-            setTimeout(() => {
-                document.body.removeChild(document.getElementById('LoaderContainer'));
-            }, 1000);
-        }, 1500);
-    });
+            document.body.removeChild(document.getElementById('LoaderContainer'));
+        }, 1000);
+    }, 1500);
 }
 
 function updateContent(packs) {
@@ -447,6 +719,7 @@ function updateContent(packs) {
     for (let j in packs) {
         let pack = packs[j];
         let div = pack.html;
+        if (!pack.visible) continue;
         packageList.appendChild(div);
     }
 }
