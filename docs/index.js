@@ -563,7 +563,8 @@ function openTab(className) {
         let elements = content.getElementsByClassName('CodeViewport');
         for (let i = 0; i < elements.length; i++) {
             elements[i].style.display = 'none';
-        }
+            // elements[i].parentElement.removeChild(elements[i]);
+        }0
         let codeContent = codeCache[version];
         if (!codeContent) {
             let hint = content.getElementsByClassName('HintScreen');
@@ -577,8 +578,8 @@ function openTab(className) {
             codeContent.id = 'CodePanel';
             content.appendChild(codeContent);
             openAtCurrentViewport(codeContent, pack, version);
-
         } else {
+            // content.appendChild(codeContent);
             codeContent.style.display = 'block';
         }
         dropDownButton.innerHTML = version;
@@ -666,6 +667,9 @@ function openAtCurrentViewport(codeView, pack, version) {
     response.then(data => {
         if (response.status === 404) throw new Error();
         data.text().then(dataText => {
+            if (version.transformer) {
+                dataText = version.transformer(dataText);
+            }
             codeView.innerHTML = '<div class="HintScreen">Painting...</div>';
             codeView.innerHTML = '';
             // codeView.innerHTML = '<';
@@ -700,7 +704,9 @@ function closeTab(tab) {
     }
     let index = tabs.indexOf(tab);
     if (index < 0) return;
-    tab.html.parentNode.removeChild(tab.html);
+    if (tab.html.parentElement) {
+        tab.html.parentNode.removeChild(tab.html);
+    }
     tab.button.parentNode.removeChild(tab.button);
     tabs.splice(index, 1);
     if (tabs.length === 0) {
@@ -735,9 +741,16 @@ function switchTab(tab) {
         if (other === tab) {
             tab.button.style.backgroundColor = '#4CAF50';
             tab.html.style.display = 'block';
+            // if (tab.html.parentElement === viewport) {
+            //     viewport.removeChild(tab.html);
+            // }
         } else {
             other.button.style.backgroundColor = '#358037';
             other.html.style.display = 'none';
+            // if (tab.html.parentElement !== viewport) {
+            //     tab.html.parentElement.removeChild(tab.html);
+            // }
+            // viewport.appendChild(tab.html);
         }
     }
     oldTab = tab;
@@ -897,15 +910,20 @@ async function fetchAll() {
     setStatus('Loading Spigot repository...')
     let repository = await getData(BASE + '/repos/sunarya-thito/NMS-Viewer/git/trees/master?recursive=20');
     let tree = repository.tree;
+    let sourceTransformer = data => {
+        return atob(data);
+    };
     for (let t in tree) {
         let path = tree[t].path;
-        if (path && path.startsWith("sources/") && path.endsWith('.java')) {
+        if (path && path.startsWith("sources/")) {
             path = path.substring(8);
+            path = atob(path).replace(/\\/g, '/');
             let versionName = path.substring(0, path.indexOf('/'));
             let version = {
                 index: versionToInteger(versionName),
                 toString: () => versionName,
-                path: 'sunarya-thito/NMS-Viewer/master/sources/'+versionName
+                path: 'sunarya-thito/NMS-Viewer/master/sources/'+versionName,
+                transformer: sourceTransformer
             }
             addPackage(version, path.substring(versionName.length + 1), true);
         }
