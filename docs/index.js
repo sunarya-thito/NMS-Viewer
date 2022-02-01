@@ -663,7 +663,7 @@ function setStatus(status) {
 function openAtCurrentViewport(codeView, pack, version) {
     codeView.innerHTML = '<div class="HintScreen">Loading content...</div>';
     console.log('Opening at viewport: ' + pack.path + ' (' + version + ')');
-    let response = fetch('https://raw.githubusercontent.com/'+ version.path + '/' + pack.path);
+    let response = fetch('https://raw.githubusercontent.com/'+ version.path);
     response.then(data => {
         if (response.status === 404) throw new Error();
         data.text().then(dataText => {
@@ -886,7 +886,7 @@ async function fetchAll() {
                     let version = {
                         index: 0,
                         toString: () => ver,
-                        path: 'SpigotMC/BungeeCord/master/' + ver + '/src/main/java'
+                        path: 'SpigotMC/BungeeCord/master/' + bungeeTree[t].path
                     }
                     addPackage(version, path, true);
                 }
@@ -902,7 +902,7 @@ async function fetchAll() {
             let version = {
                 index: 0,
                 toString: () => 'JDK-8',
-                path: 'ZenOfAutumn/jdk8/master'
+                path: 'ZenOfAutumn/jdk8/master/' + jdkTree[t].path
             };
             addPackage(version, path, false);
         }
@@ -922,7 +922,7 @@ async function fetchAll() {
             let version = {
                 index: versionToInteger(versionName),
                 toString: () => versionName,
-                path: 'sunarya-thito/NMS-Viewer/master/sources/'+versionName,
+                path: 'sunarya-thito/NMS-Viewer/master/'+tree[t].path,
                 transformer: sourceTransformer
             }
             addPackage(version, path.substring(versionName.length + 1), true);
