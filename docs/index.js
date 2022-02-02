@@ -130,9 +130,10 @@ function openSelectedElement() {
     if (selectedElement.type === ELEMENT_TYPE_CLASS) {
         let tab = openTab(selectedElement.className);
         if (selectedElement.version) {
-            if (hasVersion(tab.pack.versions, selectedElement.version)) {
+            let v = hasVersion(tab.pack.versions, selectedElement.version);
+            if (v) {
                 console.log('Loading last version');
-                tab.openVersion(selectedElement.version);
+                tab.openVersion(v);
             }
         }
     }
@@ -598,9 +599,18 @@ function openTab(className) {
     }
     content.appendChild(versionSelector);
     viewport.appendChild(content);
-    if (lastVersion && hasVersion(pack.versions, lastVersion)) {
-        console.log('Loading last version: ' + lastVersion);
-        openVersion(lastVersion);
+    if (lastVersion) {
+        let currentLastVersion = hasVersion(pack.versions, lastVersion);
+        if (currentLastVersion) {
+            console.log('Loading last version: ' + lastVersion);
+            openVersion(currentLastVersion);
+        } else {
+            dropDownButton.innerHTML = 'Select Version';
+            let hint = document.createElement('div');
+            hint.className = 'HintScreen';
+            hint.innerHTML = 'Select the version for '+pack.name;
+            content.appendChild(hint);
+        }
     } else {
         dropDownButton.innerHTML = 'Select Version';
         let hint = document.createElement('div');
@@ -663,6 +673,7 @@ function setStatus(status) {
 function openAtCurrentViewport(codeView, pack, version) {
     codeView.innerHTML = '<div class="HintScreen">Loading content...</div>';
     console.log('Opening at viewport: ' + pack.path + ' (' + version + ')');
+    console.log('Fetching: '+version.path);
     let response = fetch('https://raw.githubusercontent.com/'+ version.path);
     response.then(data => {
         if (response.status === 404) throw new Error();
