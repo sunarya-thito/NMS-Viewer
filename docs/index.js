@@ -917,7 +917,7 @@ async function fetchAll() {
         let path = tree[t].path;
         if (path && path.startsWith("sources/")) {
             path = path.substring(8);
-            path = atob(path).replace(/\\/g, '/');
+            path = atob(path);
             let versionName = path.substring(0, path.indexOf('/'));
             let version = {
                 index: versionToInteger(versionName),
