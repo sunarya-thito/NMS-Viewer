@@ -919,10 +919,11 @@ async function fetchAll() {
             path = path.substring(8);
             path = atob(path);
             let versionName = path.substring(0, path.indexOf('/'));
+            let originalPath = tree[t].path;
             let version = {
                 index: versionToInteger(versionName),
                 toString: () => versionName,
-                path: 'sunarya-thito/NMS-Viewer/master/'+tree[t].path,
+                path: 'sunarya-thito/NMS-Viewer/master/'+originalPath,
                 transformer: sourceTransformer
             }
             addPackage(version, path.substring(versionName.length + 1), true);
