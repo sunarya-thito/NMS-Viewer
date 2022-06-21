@@ -925,25 +925,50 @@ async function fetchAll() {
     };
     let versionList = [];
     let count  = 0;
-    for (let x in paths) {
-        for (let y in paths[x]) {
-            let versionName = paths[x][y];
-            let path = versionName + "/" + x;
-            let obfuscatedPath = btoa(path);
-            let version = {
-                index: versionToInteger(versionName),
-                toString: () => versionName,
-                path: 'sunarya-thito/NMS-Viewer/master/sources/'+obfuscatedPath,
-                transformer: sourceTransformer
+    let sortedVersions = paths.sortedVersions;
+    let packages = paths.packages;
+    let sources = paths.paths;
+    for (let packageIndex in sources) {
+        let packageName = packages[parseInt(packageIndex)];
+        let classes = sources[packageIndex];
+        for (let classAttribute of classes) {
+            let className = packageName + '/' + classAttribute.n + '.java';
+            for (let versionIndex of classAttribute.v) {
+                let versionName = sortedVersions[versionIndex];
+                let path = versionName + "/" + className;
+                let obfuscatedPath = btoa(path);
+                let version = {
+                    index: versionToInteger(versionName),
+                    toString: () => versionName,
+                    path: 'sunarya-thito/NMS-Viewer/master/sources/'+obfuscatedPath,
+                    transformer: sourceTransformer
+                }
+                if (versionList.indexOf(versionName) < 0) {
+                    versionList.push(versionName);
+                }
+                addPackage(version, path.substring(versionName.length + 1), true);
+                count++;
             }
-            if (versionList.indexOf(versionName) < 0) {
-                versionList.push(versionName);
-            }
-            addPackage(version, path.substring(versionName.length + 1), true);
         }
     }
-    console.log(versionList);
-    console.log(count);
+    // for (let x in paths) {
+    //     for (let y in paths[x]) {
+    //         let versionName = paths[x][y];
+    //         let path = versionName + "/" + x;
+    //         let obfuscatedPath = btoa(path);
+    //         let version = {
+    //             index: versionToInteger(versionName),
+    //             toString: () => versionName,
+    //             path: 'sunarya-thito/NMS-Viewer/master/sources/'+obfuscatedPath,
+    //             transformer: sourceTransformer
+    //         }
+    //         if (versionList.indexOf(versionName) < 0) {
+    //             versionList.push(versionName);
+    //         }
+    //         addPackage(version, path.substring(versionName.length + 1), true);
+    //         count++;
+    //     }
+    // }
     console.log('Loaded ' + count + ' classes!');
     setStatus('Done');
     console.log('Total ' + Object.keys(allClasses).length + ' classpaths loaded into your browser!');

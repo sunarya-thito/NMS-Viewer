@@ -1,0 +1,10 @@
+{
+  "name": "NMS-Viewer",
+  "version": "1.0.0",
+  "dependencies": {
+    "javadoc": "^2.0.0"
+  },
+  "devDependencies": {
+    "java-parser": "^2.0.2"
+  }
+}
