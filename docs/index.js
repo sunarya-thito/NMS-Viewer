@@ -919,7 +919,7 @@ async function fetchAll() {
         }
     }
     setStatus('Loading Spigot repository...')
-    let paths = await getData('/paths.json');
+    let paths = await getData('https://raw.githubusercontent.com/sunarya-thito/NMS-Viewer/master/docs/paths.json');
     let sourceTransformer = data => {
         return atob(data);
     };
