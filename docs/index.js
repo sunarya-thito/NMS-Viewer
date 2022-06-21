@@ -904,7 +904,7 @@ async function fetchAll() {
             }
         }
     }
-    setStatus('Loading JDK-8 repository...')
+    setStatus('Loading JDK-8 repository...');
     let jdkRepo = await getData(BASE + '/repos/ZenOfAutumn/jdk8/git/trees/master?recursive=20');
     let jdkTree = jdkRepo.tree;
     for (let t in jdkTree) {
@@ -919,28 +919,32 @@ async function fetchAll() {
         }
     }
     setStatus('Loading Spigot repository...')
-    let repository = await getData(BASE + '/repos/sunarya-thito/NMS-Viewer/git/trees/master?recursive=20');
-    let tree = repository.tree;
+    let paths = await getData('/paths.json');
     let sourceTransformer = data => {
         return atob(data);
     };
-    for (let t in tree) {
-        let path = tree[t].path;
-        if (path && path.startsWith("sources/")) {
-            path = path.substring(8);
-            path = atob(path);
-            let versionName = path.substring(0, path.indexOf('/'));
-            let originalPath = tree[t].path;
+    let versionList = [];
+    let count  = 0;
+    for (let x in paths) {
+        for (let y in paths[x]) {
+            let versionName = paths[x][y];
+            let path = versionName + "/" + x;
+            let obfuscatedPath = btoa(path);
             let version = {
                 index: versionToInteger(versionName),
                 toString: () => versionName,
-                path: 'sunarya-thito/NMS-Viewer/master/'+originalPath,
+                path: 'sunarya-thito/NMS-Viewer/master/sources/'+obfuscatedPath,
                 transformer: sourceTransformer
+            }
+            if (versionList.indexOf(versionName) < 0) {
+                versionList.push(versionName);
             }
             addPackage(version, path.substring(versionName.length + 1), true);
         }
     }
-    console.log('Loaded ' + tree.length + ' classes!');
+    console.log(versionList);
+    console.log(count);
+    console.log('Loaded ' + count + ' classes!');
     setStatus('Done');
     console.log('Total ' + Object.keys(allClasses).length + ' classpaths loaded into your browser!');
     document.getElementById('Container').style.display = 'flex';
@@ -1043,7 +1047,7 @@ function editDistance(s1, s2) {
                 costs[j] = j;
             else {
                 if (j > 0) {
-                    var newValue = costs[j - 1];
+                    let newValue = costs[j - 1];
                     if (s1.charAt(i - 1) !== s2.charAt(j - 1))
                         newValue = Math.min(Math.min(newValue, lastValue),
                             costs[j]) + 1;
