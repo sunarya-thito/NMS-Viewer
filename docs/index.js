@@ -1,5 +1,5 @@
 const BASE = 'https://api.github.com';
-const MAX_SEARCH = 100;
+let MAX_SEARCH = 100;
 const ELEMENT_TYPE_CLASS = 'CLASS';
 const ELEMENT_TYPE_METHOD = 'METHOD';
 const ACCESS_MODIFIERS = ['public', 'private', 'abstract', 'final', 'strictfp', 'static', 'default', 'protected', 'transient', 'synchronized', 'volatile'];
